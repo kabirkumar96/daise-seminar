@@ -18,14 +18,11 @@ class nn_dataset(Dataset):
     """
     To do some changes in dataset
     """
-    def __init__(self,data,train_fd=False):
-        self.train_fd = train_fd
+    def __init__(self,data):
         x = data[:,:-1]
         x = np.apply_along_axis(self.in_array_flattten, axis = 1, arr = data)
-        if train_fd:
-            y = data[:,-1].astype('float32')
-        else:
-            y = data[:,-1].astype('float32').reshape(-1,1)
+        
+        y = data[:,-1].astype('float32').reshape(-1,1)
         
         self.x = torch.tensor(x,dtype=torch.float32).to(device)
         self.y = torch.tensor(y,dtype=torch.float32).to(device)
@@ -37,7 +34,7 @@ class nn_dataset(Dataset):
     
     def in_array_flattten(self, a):
         """Flatten array inside array"""    
-        # print(a[0].shape)
+
         if self.train_fd:
             return a[0]
         return np.append(a[0].flatten(), a[1])
@@ -225,17 +222,14 @@ def cross_validation(nn_arch, dataset_train, dataset_test, epochs = 50, criterio
         
 
         # Init the neural network
-        if train_fd:
-            model = nn_fd().to(device) 
-        else:
-            model = nn_net(dataset_train.x.shape[1],nn_arch).to(device) 
+        model = nn_net(dataset_train.x.shape[1],nn_arch).to(device) 
         model.apply(reset_weights)
 
         # Initialize optimizer
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
         # Run the training loop for defined number of epochs
-        model, loss = train(model, epochs, optimizer, trainloader,valloader, criterion, train_fd = train_fd)
+        model, loss = train(model, epochs, optimizer, trainloader, valloader, criterion, train_fd = train_fd)
         
         # Early stopping
         val_loss = validation(model, valloader, criterion)
@@ -298,5 +292,6 @@ def main(filepath, nn_arch):
     data_train, data_test = train_test_split(data, test_size = 0.5, random_state = 42)
     
     results = bootstrap(nn_arch, data_train, data_test, epochs = 1000, n_bootstraps = 5, bootstrap_dim = 5000)
+    cv_losses = cross_validation(nn_arch, data_train, data_test, epochs = 1000, train_fd = train_fd)
 
     return results
