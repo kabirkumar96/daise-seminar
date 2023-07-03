@@ -18,12 +18,9 @@ class nn_dataset(Dataset):
     """
     To do some changes in dataset
     """
-    def __init__(self,data):
-        # print(data[:,:-48])
-        x = data[:,:-48].astype('float32')
-        # x = np.apply_along_axis(self.in_array_flattten, axis = 1, arr = data)
-        
-        y = data[:,-48:].astype('float32')
+    def __init__(self,data, hyper_params):
+        x = data[:,:-hyper_params['output_dims']].astype('float32')
+        y = data[:,-hyper_params['output_dims']:].astype('float32')
         
         self.x = torch.tensor(x,dtype=torch.float32).to(device)
         self.y = torch.tensor(y,dtype=torch.float32).to(device)
@@ -194,7 +191,7 @@ def cross_validation(nn_arch, dataset_train, dataset_test, epochs = 50, criterio
         _type_: _description_
     """
     # For fold results
-    results =  {'tr': [], 'val': [], 'test': [], 'aic': []}
+    results =  {'tr': [], 'val': [], 'test': [], 'models': []}
 
     
     # early_stopping = EarlyStopping(patience=patience, verbose=True, delta = 0.001)
@@ -242,9 +239,9 @@ def cross_validation(nn_arch, dataset_train, dataset_test, epochs = 50, criterio
         results['tr'].append(loss.item())
         results['val'].append(val_loss)
         results['test'].append(test_loss)
-        # results['aic'].append(aic_score)
+        results['models'].append(model)
 
-    return  {'tr': np.mean(results['tr']), 'val': np.mean(results['val']), 'test': np.mean(results['test'])}
+    return  {'tr': np.mean(results['tr']), 'val': np.mean(results['val']), 'test': np.mean(results['test']), 'models': results['models']}
 
 def bootstrap(nn_arch, train_data: np.ndarray, test_data: np.ndarray, 
                     epochs = 25, n_bootstraps = 50, bootstrap_dim = 1000, train_fd = False) -> dict:
@@ -287,14 +284,32 @@ def bootstrap(nn_arch, train_data: np.ndarray, test_data: np.ndarray,
     return bootstrap_losses
 
 
-def main(data_train, data_test, nn_arch):
+def main(data_train, data_test, hyper_params, nn_arch):
     # data = np.load(filepath, allow_pickle=True)
     
-    
-    
     # results = bootstrap(nn_arch, data_train, data_test, epochs = 1000, n_bootstraps = 5, bootstrap_dim = 5000)
-    train = nn_dataset(data_train)
-    test = nn_dataset(data_test)
+    train = nn_dataset(data_train, hyper_params)
+    test = nn_dataset(data_test, hyper_params)
     cv_losses = cross_validation(nn_arch, train, test, epochs = 1000, batch_size = 64, k_folds = 2)
 
     return cv_losses
+
+def get_preds(data_test, model, hyper_params):
+    
+    data_test = nn_dataset(data_test, hyper_params)
+    testloader = torch.utils.data.DataLoader(data_test, batch_size=1)
+    
+    model.eval()
+    preds = []
+    
+    # get preds
+    with torch.no_grad():
+        for data in testloader:
+            inputs, targets = data
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+            preds.append(outputs.numpy())
+    
+    return np.array(preds)
