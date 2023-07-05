@@ -290,7 +290,7 @@ def main(data_train, data_test, hyper_params, nn_arch):
     # results = bootstrap(nn_arch, data_train, data_test, epochs = 1000, n_bootstraps = 5, bootstrap_dim = 5000)
     train = nn_dataset(data_train, hyper_params)
     test = nn_dataset(data_test, hyper_params)
-    cv_losses = cross_validation(nn_arch, train, test, epochs = 1000, batch_size = 64, k_folds = 2)
+    cv_losses = cross_validation(nn_arch, train, test, epochs = 1000, batch_size = 64, k_folds = 5)
 
     return cv_losses
 
